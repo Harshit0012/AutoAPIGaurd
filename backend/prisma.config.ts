@@ -1,3 +1,5 @@
+// Load .env before Prisma config evaluation so `env("DATABASE_URL")` works
+import 'dotenv/config';
 import { defineConfig, env } from "prisma/config";
 
 export default defineConfig({
