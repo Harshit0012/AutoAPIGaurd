@@ -1,0 +1,54 @@
+name: CI — Seed & Smoke Check
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  seed-and-check:
+    name: Generate → Migrate → Seed → Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Prepare backend .env
+        run: |
+          cd backend
+          # Create .env from example (safe for CI)
+          if [ -f .env.example ]; then cp .env.example .env; else echo "DATABASE_URL=\"file:./prisma/dev.db\"" > .env; fi
+
+      - name: Install backend dependencies
+        run: |
+          cd backend
+          npm ci
+
+      - name: Generate Prisma client
+        run: |
+          cd backend
+          npm run prisma:generate
+
+      - name: Apply migrations (non-interactive)
+        run: |
+          cd backend
+          # Use migrate deploy in CI to apply existing migrations non-interactively
+          npx prisma migrate deploy --schema=prisma/schema.prisma
+
+      - name: Run JS seed
+        run: |
+          cd backend
+          npm run prisma:seed:js
+
+      - name: Run seed verification
+        run: |
+          cd backend
+          npm run check:data
